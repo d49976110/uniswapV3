@@ -126,6 +126,7 @@ contract NonfungiblePositionManager is
 
     /// @inheritdoc INonfungiblePositionManager
     // tokenId = _nextId ++;
+    // MintParams : 在INonfungiblePositionManager定義
     function mint(MintParams calldata params)
         external
         payable
