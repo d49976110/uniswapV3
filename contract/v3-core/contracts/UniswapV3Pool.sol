@@ -303,11 +303,12 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         noDelegateCall
         returns (Position.Info storage position, int256 amount0, int256 amount1)
     {
-        //確認tick是否在範圍內
+        // 確認tick是否在範圍內
         checkTicks(params.tickLower, params.tickUpper);
 
         Slot0 memory _slot0 = slot0; // SLOAD for gas optimization
 
+        // 更新position
         position = _updatePosition(
             params.owner,
             params.tickLower,
@@ -317,6 +318,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         );
 
         if (params.liquidityDelta != 0) {
+            // 將max、min price與當前的價格比較，來決定該存入哪種token
             if (_slot0.tick < params.tickLower) {
                 // current tick is below the passed range; liquidity can only become in range by crossing from left to
                 // right, when we'll need _more_ token0 (it's becoming more valuable) so user must provide it

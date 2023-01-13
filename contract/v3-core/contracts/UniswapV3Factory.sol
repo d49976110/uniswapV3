@@ -10,20 +10,14 @@ import "./UniswapV3Pool.sol";
 
 /// @title Canonical Uniswap V3 factory
 /// @notice Deploys Uniswap V3 pools and manages ownership and control over pool protocol fees
-contract UniswapV3Factory is
-    IUniswapV3Factory,
-    UniswapV3PoolDeployer,
-    NoDelegateCall
-{
+contract UniswapV3Factory is IUniswapV3Factory, UniswapV3PoolDeployer, NoDelegateCall {
     /// @inheritdoc IUniswapV3Factory
     address public override owner;
 
     /// @inheritdoc IUniswapV3Factory
     mapping(uint24 => int24) public override feeAmountTickSpacing;
     /// @inheritdoc IUniswapV3Factory
-    mapping(address => mapping(address => mapping(uint24 => address)))
-        public
-        override getPool;
+    mapping(address => mapping(address => mapping(uint24 => address))) public override getPool;
 
     constructor() {
         owner = msg.sender;
@@ -38,18 +32,20 @@ contract UniswapV3Factory is
     }
 
     /// @inheritdoc IUniswapV3Factory
-    function createPool(
-        address tokenA,
-        address tokenB,
-        uint24 fee
-    ) external override noDelegateCall returns (address pool) {
+    function createPool(address tokenA, address tokenB, uint24 fee)
+        external
+        override
+        noDelegateCall
+        returns (address pool)
+    {
         require(tokenA != tokenB);
-        (address token0, address token1) = tokenA < tokenB
-            ? (tokenA, tokenB)
-            : (tokenB, tokenA);
+
+        // 需要先排序，因為getPool需要按照順序
+        (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         require(token0 != address(0));
         int24 tickSpacing = feeAmountTickSpacing[fee];
         require(tickSpacing != 0);
+
         //需要沒有創建過才進行創建
         require(getPool[token0][token1][fee] == address(0));
         pool = deploy(address(this), token0, token1, fee, tickSpacing);
