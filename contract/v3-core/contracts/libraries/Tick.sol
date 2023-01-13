@@ -120,6 +120,7 @@ library Tick {
         bool upper,
         uint128 maxLiquidity
     ) internal returns (bool flipped) {
+        //得到當前tick的狀態
         Tick.Info storage info = self[tick];
 
         uint128 liquidityGrossBefore = info.liquidityGross;
@@ -127,6 +128,7 @@ library Tick {
 
         require(liquidityGrossAfter <= maxLiquidity, 'LO');
 
+        // 只有在0與非0間轉換時，flipped才會是true
         flipped = (liquidityGrossAfter == 0) != (liquidityGrossBefore == 0);
 
         if (liquidityGrossBefore == 0) {

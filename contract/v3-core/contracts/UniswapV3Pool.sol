@@ -296,7 +296,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
     /// @return position a storage pointer referencing the position with the given owner and tick range
     /// @return amount0 the amount of token0 owed to the pool, negative if the pool should pay the recipient
     /// @return amount1 the amount of token1 owed to the pool, negative if the pool should pay the recipient\
-    // 對position(流動性)做一些更改
+    // 確認max&min price的範圍，來決定該做什麼
     // params = {owner: recipient,tickLower: tickLower,tickUpper: tickUpper,liquidityDelta: int256(amount).toInt128()}
     function _modifyPosition(ModifyPositionParams memory params)
         private
@@ -313,7 +313,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             params.owner,
             params.tickLower,
             params.tickUpper,
-            params.liquidityDelta, //想要添加的liquidity amount
+            params.liquidityDelta, //想要添加的liquidity amount，mint是正值，burn就是負值
             _slot0.tick
         );
 
@@ -348,6 +348,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
                     TickMath.getSqrtRatioAtTick(params.tickLower), _slot0.sqrtPriceX96, params.liquidityDelta
                 );
 
+                // global variable
                 liquidity = LiquidityMath.addDelta(liquidityBefore, params.liquidityDelta);
             } else {
                 // current tick is above the passed range; liquidity can only become in range by crossing from right to
@@ -382,6 +383,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         // if we need to update the ticks, do it
         bool flippedLower;
         bool flippedUpper;
+
         // 如果流動性數量有變化 更新oracle & tick數據
         if (liquidityDelta != 0) {
             uint32 time = _blockTimestamp();
@@ -430,8 +432,10 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         // 更新position狀態 流動性 手續費
         position.update(liquidityDelta, feeGrowthInside0X128, feeGrowthInside1X128);
 
+        //只有burn才會導致liquidityDelta < 0 
         // clear any tick data that is no longer needed
         if (liquidityDelta < 0) {
+            // flippedLower , flippedUpper只有當該tick是在"0"與"非0"間轉換時才會是true，又因為上面是burn，所以目前的liquidityGrossAfter一定是0
             if (flippedLower) {
                 ticks.clear(tickLower);
             }
