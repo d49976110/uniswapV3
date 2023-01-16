@@ -68,9 +68,10 @@ library Tick {
         Info storage lower = self[tickLower];
         Info storage upper = self[tickUpper];
 
-        // calculate fee growth below
+        // 計算低於lower的手續費
         uint256 feeGrowthBelow0X128;
         uint256 feeGrowthBelow1X128;
+    
         if (tickCurrent >= tickLower) {
             feeGrowthBelow0X128 = lower.feeGrowthOutside0X128;
             feeGrowthBelow1X128 = lower.feeGrowthOutside1X128;
@@ -79,13 +80,15 @@ library Tick {
             feeGrowthBelow1X128 = feeGrowthGlobal1X128 - lower.feeGrowthOutside1X128;
         }
 
-        // calculate fee growth above
+        // 計算高於upper的手續費
         uint256 feeGrowthAbove0X128;
         uint256 feeGrowthAbove1X128;
         if (tickCurrent < tickUpper) {
+            // 代表沒有被穿越，feeGrowthOutside0X128不用更新
             feeGrowthAbove0X128 = upper.feeGrowthOutside0X128;
             feeGrowthAbove1X128 = upper.feeGrowthOutside1X128;
         } else {
+            // 穿越後則用全部扣除掉左邊，相當於高於此tick的所有手續費
             feeGrowthAbove0X128 = feeGrowthGlobal0X128 - upper.feeGrowthOutside0X128;
             feeGrowthAbove1X128 = feeGrowthGlobal1X128 - upper.feeGrowthOutside1X128;
         }
