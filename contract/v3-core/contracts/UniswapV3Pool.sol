@@ -75,6 +75,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
     Slot0 public override slot0;
 
     /// @inheritdoc IUniswapV3PoolState
+    // 在swap與flash時會調整
     uint256 public override feeGrowthGlobal0X128;
     /// @inheritdoc IUniswapV3PoolState
     uint256 public override feeGrowthGlobal1X128;
@@ -315,7 +316,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             params.tickUpper,
             params.liquidityDelta, //想要添加的liquidity amount，mint是正值，burn就是負值
             _slot0.tick
-        );
+        ); 
 
         if (params.liquidityDelta != 0) {
             // 將max、min price與當前的價格比較，來決定該存入哪種token
@@ -367,6 +368,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
     /// @param tickLower the lower tick of the position's tick range
     /// @param tickUpper the upper tick of the position's tick range
     /// @param tick the current tick, passed to avoid sloads
+    // 會先處理tick，再處理position
     function _updatePosition(address owner, int24 tickLower, int24 tickUpper, int128 liquidityDelta, int24 tick)
         private
         returns (Position.Info storage position)
@@ -385,6 +387,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         bool flippedUpper;
 
         // 如果流動性數量有變化 更新oracle & tick數據
+        // 如果是mint，liquidity會是正值，burn，則是負值，只要有值，就會執行以下內容
         if (liquidityDelta != 0) {
             uint32 time = _blockTimestamp();
             // 更新Oracle數據
@@ -392,7 +395,8 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
                 time, 0, slot0.tick, slot0.observationIndex, liquidity, slot0.observationCardinality
             );
 
-            //更新ticks
+            // 更新lower與upper這兩個tick內的資訊
+            // 如果tick从无流动性到有流动性，或者从有流动性变成无流动性，则表示tick需要翻转flipped。
             flippedLower = ticks.update(
                 tickLower,
                 tick,
@@ -429,7 +433,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) =
             ticks.getFeeGrowthInside(tickLower, tickUpper, tick, _feeGrowthGlobal0X128, _feeGrowthGlobal1X128);
 
-        // 更新position狀態 流動性 手續費
+        // 更新該價格區間(position)累積每流動性手續費
         position.update(liquidityDelta, feeGrowthInside0X128, feeGrowthInside1X128);
 
         //只有burn才會導致liquidityDelta < 0 

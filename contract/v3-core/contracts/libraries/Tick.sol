@@ -50,9 +50,9 @@ library Tick {
 
     /// @notice Retrieves fee growth data
     /// @param self The mapping containing all tick information for initialized ticks
-    /// @param tickLower The lower tick boundary of the position
-    /// @param tickUpper The upper tick boundary of the position
-    /// @param tickCurrent The current tick
+    /// @param tickLower 由pool傳來的，主要是_updatePosition時設定
+    /// @param tickUpper 由pool傳來的，主要是_updatePosition時設定
+    /// @param tickCurrent 當前價格的tick
     /// @param feeGrowthGlobal0X128 The all-time global fee growth, per unit of liquidity, in token0
     /// @param feeGrowthGlobal1X128 The all-time global fee growth, per unit of liquidity, in token1
     /// @return feeGrowthInside0X128 The all-time fee growth in token0, per unit of liquidity, inside the position's tick boundaries
