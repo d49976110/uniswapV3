@@ -72,7 +72,7 @@ abstract contract LiquidityManagement is IUniswapV3MintCallback, PeripheryImmuta
                 sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, params.amount0Desired, params.amount1Desired
             );
         }
-        //params.recipient 是 NonfungiblePositionManager
+        //params.recipient 是此份合約 NonfungiblePositionManager
         (amount0, amount1) = pool.mint(
             params.recipient,
             params.tickLower,

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0 <0.8.0;
 
-import './FullMath.sol';
-import './FixedPoint128.sol';
-import './LiquidityMath.sol';
+import "./FullMath.sol";
+import "./FixedPoint128.sol";
+import "./LiquidityMath.sol";
 
 /// @title Position
 /// @notice Positions represent an owner address' liquidity between a lower and upper tick boundary
@@ -27,12 +27,11 @@ library Position {
     /// @param tickLower The lower tick boundary of the position
     /// @param tickUpper The upper tick boundary of the position
     /// @return position The position info struct of the given owners' position
-    function get(
-        mapping(bytes32 => Info) storage self,
-        address owner,
-        int24 tickLower,
-        int24 tickUpper
-    ) internal view returns (Position.Info storage position) {
+    function get(mapping(bytes32 => Info) storage self, address owner, int24 tickLower, int24 tickUpper)
+        internal
+        view
+        returns (Position.Info storage position)
+    {
         //position：為該用戶在此區間的流動性
         position = self[keccak256(abi.encodePacked(owner, tickLower, tickUpper))];
     }
@@ -42,6 +41,7 @@ library Position {
     /// @param liquidityDelta The change in pool liquidity as a result of the position update
     /// @param feeGrowthInside0X128 The all-time fee growth in token0, per unit of liquidity, inside the position's tick boundaries
     /// @param feeGrowthInside1X128 The all-time fee growth in token1, per unit of liquidity, inside the position's tick boundaries
+    // 只有當mint與burn才會觸發，swap不會觸發，mint時 liquidityDelta > 0，burn時 liquidityDelta < 0
     function update(
         Info storage self,
         int128 liquidityDelta,
@@ -52,29 +52,20 @@ library Position {
 
         uint128 liquidityNext;
         if (liquidityDelta == 0) {
-            require(_self.liquidity > 0, 'NP'); // disallow pokes for 0 liquidity positions
+            require(_self.liquidity > 0, "NP"); // disallow pokes for 0 liquidity positions
             liquidityNext = _self.liquidity;
         } else {
             liquidityNext = LiquidityMath.addDelta(_self.liquidity, liquidityDelta);
         }
 
         // calculate accumulated fees
-        uint128 tokensOwed0 =
-            uint128(
-                FullMath.mulDiv(
-                    feeGrowthInside0X128 - _self.feeGrowthInside0LastX128,
-                    _self.liquidity,
-                    FixedPoint128.Q128
-                )
-            );
-        uint128 tokensOwed1 =
-            uint128(
-                FullMath.mulDiv(
-                    feeGrowthInside1X128 - _self.feeGrowthInside1LastX128,
-                    _self.liquidity,
-                    FixedPoint128.Q128
-                )
-            );
+        // a×b÷denominator
+        uint128 tokensOwed0 = uint128(
+            FullMath.mulDiv(feeGrowthInside0X128 - _self.feeGrowthInside0LastX128, _self.liquidity, FixedPoint128.Q128)
+        );
+        uint128 tokensOwed1 = uint128(
+            FullMath.mulDiv(feeGrowthInside1X128 - _self.feeGrowthInside1LastX128, _self.liquidity, FixedPoint128.Q128)
+        );
 
         // update the position
         if (liquidityDelta != 0) self.liquidity = liquidityNext;

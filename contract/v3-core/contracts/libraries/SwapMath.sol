@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
-import './FullMath.sol';
-import './SqrtPriceMath.sol';
+import "./FullMath.sol";
+import "./SqrtPriceMath.sol";
 
 /// @title Computes the result of a swap within ticks
 /// @notice Contains methods for computing the result of a swap within a single tick price range, i.e., a single tick.
 library SwapMath {
+    // swap的核心程式碼
     /// @notice Computes the result of swapping some amount in, or amount out, given the parameters of the swap
     /// @dev The fee, plus the amount in, will never exceed the amount remaining if the swap's `amountSpecified` is positive
     /// @param sqrtRatioCurrentX96 The current sqrt price of the pool
@@ -24,16 +25,7 @@ library SwapMath {
         uint128 liquidity,
         int256 amountRemaining,
         uint24 feePips
-    )
-        internal
-        pure
-        returns (
-            uint160 sqrtRatioNextX96,
-            uint256 amountIn,
-            uint256 amountOut,
-            uint256 feeAmount
-        )
-    {
+    ) internal pure returns (uint160 sqrtRatioNextX96, uint256 amountIn, uint256 amountOut, uint256 feeAmount) {
         bool zeroForOne = sqrtRatioCurrentX96 >= sqrtRatioTargetX96;
         bool exactIn = amountRemaining >= 0;
 
@@ -42,32 +34,31 @@ library SwapMath {
             amountIn = zeroForOne
                 ? SqrtPriceMath.getAmount0Delta(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, true)
                 : SqrtPriceMath.getAmount1Delta(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, true);
-            if (amountRemainingLessFee >= amountIn) sqrtRatioNextX96 = sqrtRatioTargetX96;
-            else
+            if (amountRemainingLessFee >= amountIn) {
+                sqrtRatioNextX96 = sqrtRatioTargetX96;
+            } else {
                 sqrtRatioNextX96 = SqrtPriceMath.getNextSqrtPriceFromInput(
-                    sqrtRatioCurrentX96,
-                    liquidity,
-                    amountRemainingLessFee,
-                    zeroForOne
+                    sqrtRatioCurrentX96, liquidity, amountRemainingLessFee, zeroForOne
                 );
+            }
         } else {
             amountOut = zeroForOne
                 ? SqrtPriceMath.getAmount1Delta(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, false)
                 : SqrtPriceMath.getAmount0Delta(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, false);
-            if (uint256(-amountRemaining) >= amountOut) sqrtRatioNextX96 = sqrtRatioTargetX96;
-            else
+            if (uint256(-amountRemaining) >= amountOut) {
+                sqrtRatioNextX96 = sqrtRatioTargetX96;
+            } else {
                 sqrtRatioNextX96 = SqrtPriceMath.getNextSqrtPriceFromOutput(
-                    sqrtRatioCurrentX96,
-                    liquidity,
-                    uint256(-amountRemaining),
-                    zeroForOne
+                    sqrtRatioCurrentX96, liquidity, uint256(-amountRemaining), zeroForOne
                 );
+            }
         }
 
         bool max = sqrtRatioTargetX96 == sqrtRatioNextX96;
 
         // get the input/output amounts
         if (zeroForOne) {
+            // 如果是amountIn，則amopuntOut需要用計算的，反之亦然，amountOut，那這樣amountIn就會需要用計算的
             amountIn = max && exactIn
                 ? amountIn
                 : SqrtPriceMath.getAmount0Delta(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, true);

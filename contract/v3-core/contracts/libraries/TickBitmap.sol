@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
-import './BitMath.sol';
+import "./BitMath.sol";
 
+// 用來判斷該tick上是否有流動性
 /// @title Packed tick initialized state library
 /// @notice Stores a packed mapping of tick index to its initialized state
 /// @dev The mapping uses int16 for keys since ticks are represented as int24 and there are 256 (2^8) values per word.
@@ -16,21 +17,19 @@ library TickBitmap {
         bitPos = uint8(tick % 256);
     }
 
+    // 当在池子中添加流动性时，我们需要在 bitmap 中设置一些 tick 的 flag：一个下界一个上界
     /// @notice Flips the initialized state for a given tick from false to true, or vice versa
     /// @param self The mapping in which to flip the tick
     /// @param tick The tick to flip
     /// @param tickSpacing The spacing between usable ticks
-    function flipTick(
-        mapping(int16 => uint256) storage self,
-        int24 tick,
-        int24 tickSpacing
-    ) internal {
+    function flipTick(mapping(int16 => uint256) storage self, int24 tick, int24 tickSpacing) internal {
         require(tick % tickSpacing == 0); // ensure that the tick is spaced
         (int16 wordPos, uint8 bitPos) = position(tick / tickSpacing);
         uint256 mask = 1 << bitPos;
         self[wordPos] ^= mask;
     }
 
+    // 在 swap 过程中，我们需要找到现在 tick 左边或者右边的下一个有流动性的 tick
     /// @notice Returns the next initialized tick contained in the same word (or adjacent word) as the tick that is either
     /// to the left (less than or equal to) or right (greater than) of the given tick
     /// @param self The mapping in which to compute the next initialized tick

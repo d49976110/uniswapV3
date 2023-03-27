@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0 <0.8.0;
 
-import './LowGasSafeMath.sol';
-import './SafeCast.sol';
+import "./LowGasSafeMath.sol";
+import "./SafeCast.sol";
 
-import './TickMath.sol';
-import './LiquidityMath.sol';
+import "./TickMath.sol";
+import "./LiquidityMath.sol";
 
 /// @title Tick
 /// @notice Contains functions for managing tick processes and relevant calculations
@@ -16,8 +16,10 @@ library Tick {
     // info stored for each initialized individual tick
     struct Info {
         // the total position liquidity that references this tick
+        // 记录了所有引用这个 tick 的 position 流动性的和
         uint128 liquidityGross;
         // amount of net liquidity added (subtracted) when tick is crossed from left to right (right to left),
+        // 当此 tick 被越过时（从左至右），池子中整体流动性需要变化的值
         int128 liquidityNet;
         // fee growth per unit of liquidity on the _other_ side of this tick (relative to the current tick)
         // only has relative meaning, not absolute — the value depends on when the tick is initialized
@@ -71,7 +73,7 @@ library Tick {
         // 計算低於lower的手續費
         uint256 feeGrowthBelow0X128;
         uint256 feeGrowthBelow1X128;
-    
+
         if (tickCurrent >= tickLower) {
             feeGrowthBelow0X128 = lower.feeGrowthOutside0X128;
             feeGrowthBelow1X128 = lower.feeGrowthOutside1X128;
@@ -129,7 +131,7 @@ library Tick {
         uint128 liquidityGrossBefore = info.liquidityGross;
         uint128 liquidityGrossAfter = LiquidityMath.addDelta(liquidityGrossBefore, liquidityDelta);
 
-        require(liquidityGrossAfter <= maxLiquidity, 'LO');
+        require(liquidityGrossAfter <= maxLiquidity, "LO");
 
         // 只有在0與非0間轉換時，flipped才會是true
         flipped = (liquidityGrossAfter == 0) != (liquidityGrossBefore == 0);

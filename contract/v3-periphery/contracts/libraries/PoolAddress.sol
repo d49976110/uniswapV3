@@ -17,15 +17,13 @@ library PoolAddress {
     /// @param tokenB The second token of a pool, unsorted
     /// @param fee The fee level of the pool
     /// @return Poolkey The pool details with ordered token0 and token1 assignments
-    function getPoolKey(
-        address tokenA,
-        address tokenB,
-        uint24 fee
-    ) internal pure returns (PoolKey memory) {
+    function getPoolKey(address tokenA, address tokenB, uint24 fee) internal pure returns (PoolKey memory) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
         return PoolKey({token0: tokenA, token1: tokenB, fee: fee});
     }
 
+    // 只需要有factory , tokenA , tokenB , fee 就可以得到池子地址
+    // 透過getPoolKey取得 key
     /// @notice Deterministically computes the pool address given the factory and PoolKey
     /// @param factory The Uniswap V3 factory contract address
     /// @param key The PoolKey
@@ -36,7 +34,7 @@ library PoolAddress {
             uint256(
                 keccak256(
                     abi.encodePacked(
-                        hex'ff',
+                        hex"ff",
                         factory, //deplyer
                         keccak256(abi.encode(key.token0, key.token1, key.fee)), //salt
                         POOL_INIT_CODE_HASH // creation code
