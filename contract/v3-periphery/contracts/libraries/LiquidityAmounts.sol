@@ -20,6 +20,7 @@ library LiquidityAmounts {
     /// @param sqrtRatioBX96 A sqrt price representing the second tick boundary
     /// @param amount0 The amount0 being sent in
     /// @return liquidity The amount of returned liquidity
+    
     function getLiquidityForAmount0(
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
@@ -62,15 +63,18 @@ library LiquidityAmounts {
     ) internal pure returns (uint128 liquidity) {
         //確認tick lower與tick higher順序是對的，sqrtRatioAX96是lower，sqrtRatioBX96是higher
         if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
-
+        
+        // 代表當前價格在這段拋物線position的右邊，所以需要補充token0
         if (sqrtRatioX96 <= sqrtRatioAX96) {
             liquidity = getLiquidityForAmount0(sqrtRatioAX96, sqrtRatioBX96, amount0);
         } else if (sqrtRatioX96 < sqrtRatioBX96) {
+            // 代表當前價格在這段拋物線position的區間內，所以需要補充token0
             uint128 liquidity0 = getLiquidityForAmount0(sqrtRatioX96, sqrtRatioBX96, amount0);
             uint128 liquidity1 = getLiquidityForAmount1(sqrtRatioAX96, sqrtRatioX96, amount1);
 
             liquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
         } else {
+            // 代表當前價格在這段拋物線position的左邊，所以需要補充token0
             liquidity = getLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1);
         }
     }

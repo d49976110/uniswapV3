@@ -24,7 +24,7 @@ abstract contract LiquidityManagement is IUniswapV3MintCallback, PeripheryImmuta
     /// @inheritdoc IUniswapV3MintCallback
     // 將token(amount0Owed或是amount1Owed)傳回給pool
     // data = abi.encode(MintCallbackData({poolKey: poolKey, payer: msg.sender}))
-    // data的msg.sender就是user
+    // data的msg.sender就是call NonfungibllePositionManager中mint的地址
     function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external override {
         MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
         CallbackValidation.verifyCallback(factory, decoded.poolKey);
@@ -67,6 +67,7 @@ abstract contract LiquidityManagement is IUniswapV3MintCallback, PeripheryImmuta
             //根據參數的tickLower、tickUpper計算本次提供流動性的價格上下限
             uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(params.tickLower);
             uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(params.tickUpper);
+
             // 根據入參計算其能提供的最大流動性數量
             liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, params.amount0Desired, params.amount1Desired

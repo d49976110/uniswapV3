@@ -319,8 +319,8 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             _slot0.tick
         );
 
+        // 將max、min price與當前的價格比較，來決定該存入哪種token
         if (params.liquidityDelta != 0) {
-            // 將max、min price與當前的價格比較，來決定該存入哪種token
             if (_slot0.tick < params.tickLower) {
                 // 當前價格小於所設定的tickLower，代表當前tick在拋物線的右邊，而設定的區間在當前價格左邊，因此需要加入token0
                 // current tick is below the passed range; liquidity can only become in range by crossing from left to
@@ -478,12 +478,8 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         returns (uint256 amount0, uint256 amount1)
     {
         require(amount > 0);
-        // 更新position狀態
-        (
-            ,
-            int256 amount0Int,
-            int256 amount1Int //添加流動性
-        ) = _modifyPosition(
+        // 更新position狀態，並返回token0與token1的數量
+        (, int256 amount0Int, int256 amount1Int) = _modifyPosition(
             ModifyPositionParams({
                 owner: recipient, // 所有的recipient都是NonfungiblePositionManager
                 tickLower: tickLower,
@@ -625,6 +621,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
     // amountSpecified :可以是正負數，如果是正數，是用户希望卖出的 token 数量。也是表示希望输入的代币数量；如果为负，则表示希望输出的代币数量
     /// @inheritdoc IUniswapV3PoolActions
     /// @param sqrtPriceLimitX96 願意出價的上限
+    /// @param data struct SwapCallbackData {bytes path; address payer;}
     function swap(
         address recipient,
         bool zeroForOne,
@@ -646,7 +643,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         // 防止callback回來修改變量
         slot0.unlocked = false;
 
-        // ? liquidity是全局的流動性嗎，但是v3應該是要逐步在每個position中消耗流動性
+        // feeProtocol =  uint8
         SwapCache memory cache = SwapCache({
             liquidityStart: liquidity,
             blockTimestamp: _blockTimestamp(),
@@ -656,15 +653,16 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             computedLatestObservation: false
         });
 
-        // exactInput 還是 exactOutinput
+        // exactInput 還是 exactOutinput ，exactInput => amountSpecified > 0  else  amountSpecified < 0 ，會在前面加上負號
         bool exactInput = amountSpecified > 0;
 
+        // 如果是exactInput，則amountSpecifiedRemaining會是正的，amountCalcualte會是負數
         SwapState memory state = SwapState({
             amountSpecifiedRemaining: amountSpecified,
             amountCalculated: 0,
             sqrtPriceX96: slot0Start.sqrtPriceX96,
             tick: slot0Start.tick,
-            feeGrowthGlobalX128: zeroForOne ? feeGrowthGlobal0X128 : feeGrowthGlobal1X128,
+            feeGrowthGlobalX128: zeroForOne ? feeGrowthGlobal0X128 : feeGrowthGlobal1X128, // zeroForOne則添加token0的手續費
             protocolFee: 0,
             liquidity: cache.liquidityStart
         });
@@ -672,6 +670,18 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         // 一个完整的swap可以由多个step组成，逐步找出有流動性的tick，並消耗該流動性，直到amountSpecified都被消耗完
         // continue swapping as long as we haven't used the entire input/output and haven't reached the price limit
         while (state.amountSpecifiedRemaining != 0 && state.sqrtPriceX96 != sqrtPriceLimitX96) {
+            /**
+             * struct StepComputations {
+             *     uint160 sqrtPriceStartX96;
+             *     int24 tickNext;
+             *     bool initialized;
+             *     uint160 sqrtPriceNextX96;
+             *     uint256 amountIn;
+             *     uint256 amountOut;
+             *     uint256 feeAmount;
+             * }
+             */
+
             StepComputations memory step;
             // 初始价格 := 上一个step的价格
             step.sqrtPriceStartX96 = state.sqrtPriceX96;
@@ -706,7 +716,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             );
 
             if (exactInput) {
-                // 剩餘的希望輸入代幣數量，扣除消耗的输入代币数量
+                // 是exactInput，則amountSpecifiedRemaining會由正數的減到0，amountCalculated則會從0，繼續減到變負數ㄋ
                 state.amountSpecifiedRemaining -= (step.amountIn + step.feeAmount).toInt256();
                 state.amountCalculated = state.amountCalculated.sub(step.amountOut.toInt256());
             } else {
@@ -723,11 +733,14 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             }
 
             // update global fee tracker
+            // 更新全局手续费的计算值，即每单流动性手续费的总和 = step.feeAmount * FixedPoint128.Q128 / state.liquidity
+            // 因為這段的手續費只能夠由這段的liquidity來分，所以只能除上當前tick與下個tick之間的總流動性
             if (state.liquidity > 0) {
                 state.feeGrowthGlobalX128 += FullMath.mulDiv(step.feeAmount, FixedPoint128.Q128, state.liquidity);
             }
 
             // shift tick if we reached the next price
+            // sqrtPriceX96 == sqrtPriceNextX96的狀態代表已經swap完成，則查看oracle
             if (state.sqrtPriceX96 == step.sqrtPriceNextX96) {
                 // if the tick is initialized, run the tick transition
                 if (step.initialized) {

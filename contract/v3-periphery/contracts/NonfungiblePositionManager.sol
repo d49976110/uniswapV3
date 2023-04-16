@@ -47,8 +47,8 @@ contract NonfungiblePositionManager is
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
         // how many uncollected tokens are owed to the position, as of the last computation
-        uint128 tokensOwed0;
-        uint128 tokensOwed1;
+        uint128 tokensOwed0; // token0的手續費
+        uint128 tokensOwed1; // token1的手續費
     }
 
     /// @dev IDs of pools assigned by this contract

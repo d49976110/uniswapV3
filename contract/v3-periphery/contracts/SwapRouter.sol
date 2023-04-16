@@ -87,6 +87,15 @@ contract SwapRouter is
 
         bool zeroForOne = tokenIn < tokenOut;
 
+        /**
+         * function swap(
+         *     address recipient,
+         *     bool zeroForOne,
+         *     int256 amountSpecified,
+         *     uint160 sqrtPriceLimitX96,
+         *     bytes calldata data
+         * )
+         */
         (int256 amount0, int256 amount1) = getPool(tokenIn, tokenOut, fee).swap(
             recipient,
             zeroForOne,
@@ -118,8 +127,17 @@ contract SwapRouter is
     }
 
     /// @inheritdoc ISwapRouter
-    // swap的入口
+    // swap的入口，適用於多個path，例如從Dai -> USDT -> WETH
     // ExactInputParams包含path,收款地址,有效期限,數量與最小預期獲得數量
+    /**
+     * struct ExactInputParams {
+     *         bytes path;
+     *         address recipient;
+     *         uint256 deadline;
+     *         uint256 amountIn;
+     *         uint256 amountOutMinimum;
+     *     }
+     */
     function exactInput(ExactInputParams memory params)
         external
         payable
@@ -133,6 +151,14 @@ contract SwapRouter is
             bool hasMultiplePools = params.path.hasMultiplePools();
 
             // the outputs of prior swaps become the inputs to subsequent ones
+            /**
+             * exactInputInternal(
+             *     uint256 amountIn,
+             *     address recipient,
+             *     uint160 sqrtPriceLimitX96,
+             *     SwapCallbackData memory data
+             * )
+             */
             params.amountIn = exactInputInternal(
                 params.amountIn,
                 hasMultiplePools ? address(this) : params.recipient, // for intermediate swaps, this contract custodies
